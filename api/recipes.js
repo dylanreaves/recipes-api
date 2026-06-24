@@ -1,6 +1,5 @@
 const express = require("express")
 const router = express.Router()
-//const reviewsRouter = require("./reviews")
 
 let recipes = [
   { id: 1, title: "Spaghetti Carbonara", cuisine: "Italian", minutes: 25, servings: 4, vegetarian: false },
@@ -13,11 +12,20 @@ let recipes = [
 let nextId = recipes.length+1;
 
 function validRecipe(req, res, next) {
-    console.log(req, res, next)
-    if (req.body.title && req.body.cuisine) {
+    const title = req.body.title
+    const cuisine = req.body.cuisine
+    if (title && cuisine) {
         next()
     } else {
-        return res.status(400).send("Invalid: Recipe must have a title and cuisine.")
+        return res.status(400)
+        .json({
+            Status: "Invalid Recipe",
+            Current_Input: req.body,
+            Expected_Input: {
+                title: "[string]",
+                cuisine: "[string]"
+            }
+        })
     }
 }
 
@@ -34,11 +42,19 @@ router.get("/:id", (req, res, next) => {
         const id = Number(req.params.id)
         const matchedRecipe = recipes.find((recipe) => recipe.id === id)
 
-        if (matchedRecipe) {
+        if (matchedRecipe.length > 0) {
             console.log("Match found!")
-            res.json(matchedRecipe)
+            return res.json({
+                Status: "Found",
+                Recipe: matchedRecipe
+            })
         } else {
-            return res.status(404).send("No matching ids")
+            console.log("Match not found!")
+            return res.status(404)
+            .json({
+                Status: "Not Found",
+                Recipe: null
+            })
         }
     } catch(error) {
         next(error)
@@ -50,10 +66,15 @@ router.post("/", validRecipe, (req, res, next) => {
         const newRecipe = {}
         newRecipe.id = nextId
         Object.assign(newRecipe, req.body)
-        nextId++
         recipes.push(newRecipe)
+        nextId++
+
         console.log(newRecipe)
-        res.status(201).send("New Recipe added: " + newRecipe.title)
+        return res.status(201)
+        .json({
+            Status: "Recipe was added",
+            Recipe: newRecipe
+        })
     } catch(error) {
         next(error)
     }
@@ -62,31 +83,51 @@ router.post("/", validRecipe, (req, res, next) => {
 router.patch("/:id", (req, res, next) => {
     try {
         const id = Number(req.params.id) 
+        
         for (let i = 0; i < recipes.length; i++) {
-            if (recipes[i].id === id) {
-                Object.assign(recipes[i], req.body)
+            const recipeInArray = recipes[i]
+            if (recipeInArray.id === id) {
+                const oldRecipe = Object.assign({}, recipeInArray)
+                Object.assign(recipeInArray, req.body)
+
                 console.log(req.body)
-                return res.status(200).send(recipes[i])
+                return res.status(200)
+                .json({
+                    Status: "Recipe was patched",
+                    OldRecipe: oldRecipe,
+                    NewRecipe: recipeInArray,
+                })
             }
         }
-        return res.status(404).send("No recipe with that Id exists.") //res.sendStatus(404)
+        return res.status(404)
+        .json({
+            Status: "No Recipe with that Id exists.",
+        })
     } catch(error) {
         next(error)
     }
 })
 
-router.delete("/:id", errorHandler, (req, res, next) => {
+router.delete("/:id", (req, res, next) => {
     try {
         const id = Number(req.params.id)
-        const foundRecipe = recipes.find((recipe) => { return recipe.id === id })
-        console.log(foundRecipe)
+        const recipe_index = recipes.findIndex((recipe) => { 
+            return recipe.id === id 
+        })
 
-        if (foundRecipe) {
-            const index = recipes.indexOf(foundRecipe)
-            recipes.splice(index, 1)
-            return res.status(204).send("Deleted recipe with ID:", id)
+        if (foundRecipe_idx !== -1) {
+            const foundRecipe = recipes[recipe_index]
+            recipes.splice(recipe_index, 1)
+            return res.status(200) // Was supposed to respond 204 but using it does not display an output.
+            .json({
+                Status: "Recipe was removed",
+                Recipe: foundRecipe,
+            })
         } else {
-            return res.status(404).send("No recipe with that Id exists.")
+            return res.status(404)
+            .json({
+                Status: "No Recipe with that Id exists.",
+            })
         }
 
     } catch(error) {
@@ -95,8 +136,12 @@ router.delete("/:id", errorHandler, (req, res, next) => {
 })
 
 function errorHandler(err, req, res, next) {
-  console.error(err);
-  res.status(500).send("Something Went Wrong!")
+ console.error(err);
+ return res.status(500)
+ .json({
+   Status: "Encountered an error",
+   Error: err,
+ })
 }
 
 module.exports = router
