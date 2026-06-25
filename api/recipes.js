@@ -36,35 +36,42 @@ router.get("/", (req, res, next) => {
         // Only foreseen issues are validating datatypes 
         const query = req.query
         const queryKeys = Object.keys(query)
-        //console.log(queryKeys)
+        const recipeTemplate = recipes[0]  // Default to the first recipe as an example might need a better way later.
+        const expectedDataTypes = {}
+        const recipeKeys = Object.keys(recipeTemplate)
 
+        // For each of the keys in the query we expect its datatype to be the same as the one in the array.
+        recipeKeys.forEach((key) => {
+            expectedDataTypes[key] = typeof(recipeTemplate[key])
+        })
+
+        const convertedQuery = {}
+        queryKeys.forEach((key) => {
+            const expectedType = expectedDataTypes[key]
+            let convertedValue = query[key]
+            console.log("Typeof", key, "was found to be " + expectedType + ". Converting query value to match.")
+
+            if (expectedType === "boolean") {
+                // convertedValue = Boolean(convertedValue) 
+                // This was causing an issue because the string "false" returns true.
+                convertedValue = convertedValue === "true"
+            } else if (expectedType === "number") {
+                convertedValue = Number(convertedValue)
+            } else if (expectedType === "string") {
+                convertedValue = String(convertedValue)
+            }
+
+            convertedQuery[key] = convertedValue
+        })
+
+        console.log(convertedQuery)
+        console.log("This is the query with corrected data types.")
+
+        // Filter by comparing if each converted value from the querery matches its value in the array.
         const filteredRecipes = recipes.filter((recipe) => {
-            let matched = true
-            
-            queryKeys.forEach((key) => {
-                const objectValue = recipe[key]
-                let convertedValue = query[key]
-
-                if (typeof(objectValue) === "boolean") {
-                    //console.log("Typeof", key, "was found to be Boolean. Converting query value to match.")
-                    convertedValue = Boolean(convertedValue)
-                } else if (typeof(objectValue) === "number") {
-                    //console.log("Typeof", key, "was found to be Number. Converting query value to match.")
-                    convertedValue = Number(convertedValue)
-                } else if (typeof(objectValue) === "string") {
-                    //console.log("Typeof", key, "was found to be String. Converting query value to match.")
-                    convertedValue = String(convertedValue)
-                }
-                
-                // If a value does not match everything in the query return false otherwise it will continue.
-                if (objectValue !== convertedValue) {
-                    matched = false
-                    return matched
-                }
+            return queryKeys.every((key) => {
+                return recipe[key] === convertedQuery[key]
             })
-
-            // Return the recipe if a match to the specific query was found.
-            return (matched) ? recipe : false
         })
 
         console.log(filteredRecipes)
