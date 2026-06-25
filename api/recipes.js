@@ -31,7 +31,56 @@ function validRecipe(req, res, next) {
 
 router.get("/", (req, res, next) => {
     try {
-        return res.json(recipes)
+        // This query works but there must be a better way to do this if the user adds more to their query
+        // i.e '/api/recipes/?cuisine=Italian&vegetarian=true'
+        // Only foreseen issues are validating datatypes 
+        const query = req.query
+        const queryKeys = Object.keys(query)
+        //console.log(queryKeys)
+
+        const filteredRecipes = recipes.filter((recipe) => {
+            let matched = true
+            
+            queryKeys.forEach((key) => {
+                const objectValue = recipe[key]
+                let convertedValue = query[key]
+
+                if (typeof(objectValue) === "boolean") {
+                    //console.log("Typeof", key, "was found to be Boolean. Converting query value to match.")
+                    convertedValue = Boolean(convertedValue)
+                } else if (typeof(objectValue) === "number") {
+                    //console.log("Typeof", key, "was found to be Number. Converting query value to match.")
+                    convertedValue = Number(convertedValue)
+                } else if (typeof(objectValue) === "string") {
+                    //console.log("Typeof", key, "was found to be String. Converting query value to match.")
+                    convertedValue = String(convertedValue)
+                }
+                
+                // If a value does not match everything in the query return false otherwise it will continue.
+                if (objectValue !== convertedValue) {
+                    matched = false
+                    return matched
+                }
+            })
+
+            // Return the recipe if a match to the specific query was found.
+            return (matched) ? recipe : false
+        })
+
+        console.log(filteredRecipes)
+
+        if (filteredRecipes.length > 0) { 
+            return res.json({
+                Status: "Found",
+                Found: filteredRecipes
+            })
+        } else {
+            return res.status(404)
+            .json({
+                Status: "Not Found",
+                Found: null
+            })
+        }
     } catch(error) {
         next(error)
     }

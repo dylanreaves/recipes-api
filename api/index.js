@@ -8,9 +8,25 @@ const reviewsRouter = require("./reviews")
 // const newRouter = require("./new_route");
 // newRouter.use("/new_route", newRouter)
 
+// Must be called first (before other requests are potentially triggered)
+let requestCounter = 0;
+function incrementRequests(req, res, next) {
+    requestCounter++
+    console.log(requestCounter)
+    next()
+}
+router.use(incrementRequests)
+
 router.use("/recipes", recipeRouter)
 
 router.use("/recipes", reviewsRouter)
 router.use("/reviews", reviewsRouter)
+
+router.get("/stats", (req, res, next) => {
+    console.log(requestCounter)
+    res.json({
+        TotalRequests: requestCounter
+    })
+})
 
 module.exports = router
